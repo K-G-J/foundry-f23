@@ -6,6 +6,7 @@ import {Test} from "forge-std/Test.sol";
 import {DSCEngine} from "../../src/DSCEngine.sol";
 import {DecentralizedStableCoin} from "../../src/DecentralizedStableCoin.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
+import {MockV3Aggregator} from "../mocks/MockV3Aggregator.sol";
 
 contract Handler is Test {
     DSCEngine dsce;
@@ -14,7 +15,8 @@ contract Handler is Test {
     ERC20Mock weth;
     ERC20Mock wbtc;
 
-    uint256 public timesMintIsCalled;
+    address[] public usersWithCollateralDeposited;
+    MockV3Aggregator public ethUsdPriceFeed;
 
     uint256 MAX_DEPOSIT_SIZE = type(uint96).max; // the maximum uint96 value
 
@@ -25,12 +27,20 @@ contract Handler is Test {
         address[] memory collateralTokens = dsce.getCollateralTokens();
         weth = ERC20Mock(collateralTokens[0]);
         wbtc = ERC20Mock(collateralTokens[1]);
+
+        ethUsdPriceFeed = MockV3Aggregator(dsce.getCollateralTokenPriceFeed(address(weth)));
     }
 
     /* solium-disable-next-line */
-    function mintDsc(uint256 amount) public {
+    function mintDsc(uint256 amount, uint256 addressSeed) public {
+        if (usersWithCollateralDeposited.length == 0) {
+            return;
+        }
+        address sender = usersWithCollateralDeposited[addressSeed % usersWithCollateralDeposited.length];
         (uint256 totalDscMinted, uint256 collateralValueInUsd) = dsce.getAccountInformation(msg.sender);
+
         int256 maxDscToMint = (int256(collateralValueInUsd) / 2) - int256(totalDscMinted);
+
         if (maxDscToMint < 0) {
             return;
         }
@@ -38,10 +48,9 @@ contract Handler is Test {
         if (amount == 0) {
             return;
         }
-        vm.startPrank(msg.sender);
+        vm.startPrank(sender);
         dsce.mintDsc(amount);
         vm.stopPrank();
-        timesMintIsCalled++;
     }
 
     // redeem collateral <- only call when there is collateral
@@ -55,6 +64,7 @@ contract Handler is Test {
         collateral.approve(address(dsce), amountCollateral);
         dsce.depositCollateral(address(collateral), amountCollateral);
         vm.stopPrank();
+        usersWithCollateralDeposited.push(msg.sender);
     }
 
     /* solium-disable-next-line */
@@ -67,6 +77,13 @@ contract Handler is Test {
         }
         dsce.redeemCollateral(address(collateral), amountCollateral);
     }
+
+    // Breaks our invariant test suite! - known bug if the price of an asset plummets too quickly the invariant breaks
+    /* solium-disable-next-line */
+    // function updateCollateralPrice(uint96 newPrice) public {
+    //     int256 newPrice = int256(uint256(newPrice));
+    //     ethUsdPriceFeed.updateAnswer(newPrice);
+    // }
 
     // Helper Functions
     function _getCollateralFromSeed(uint256 collateralSeed) private view returns (ERC20Mock) {
