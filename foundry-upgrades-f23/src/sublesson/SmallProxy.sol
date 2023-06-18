@@ -9,23 +9,26 @@ contract SmallProxy is Proxy {
     bytes32 private constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 
     function setImplementation(address newImplementation) public {
+        /* solium-disable-next-line */
         assembly {
             sstore(_IMPLEMENTATION_SLOT, newImplementation)
         }
     }
 
     function _implementation() internal view override returns (address implementationAddress) {
+        /* solium-disable-next-line */
         assembly {
             implementationAddress := sload(_IMPLEMENTATION_SLOT)
         }
     }
 
     // Helper function
-    function getDataToTransaction(uint256 numberToUpdate) public pure returns (bytes memory) {
+    function getDataToTransact(uint256 numberToUpdate) public pure returns (bytes memory) {
         return abi.encodeWithSignature("setValue(uint256)", numberToUpdate);
     }
 
     function readStorage() public view returns (uint256 valueAtStorageSlotZero) {
+        /* solium-disable-next-line */
         assembly {
             valueAtStorageSlotZero := sload(0)
         }
