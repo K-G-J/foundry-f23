@@ -6,8 +6,18 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract BoxV2 {
+contract BoxV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     uint256 internal number;
+
+    // @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize() public initializer {
+        __Ownable_init(); // sets owner to msg.sender
+        __UUPSUpgradeable_init();
+    }
 
     function setNumber(uint256 _number) external {
         number = _number;
@@ -17,7 +27,9 @@ contract BoxV2 {
         return number;
     }
 
-    function vertsion() external pure returns (uint256) {
+    function version() external pure returns (uint256) {
         return 2;
     }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }
