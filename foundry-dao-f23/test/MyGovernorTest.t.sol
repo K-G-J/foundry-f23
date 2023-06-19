@@ -89,6 +89,13 @@ contract MyGovernorTest is Test {
         bytes32 descriptionHash = keccak256(abi.encodePacked(description));
         governor.queue(targets, values, calldatas, descriptionHash);
 
+        vm.warp(block.timestamp + MIN_DELAY + 1);
+        vm.roll(block.number + MIN_DELAY + 1);
+
         // 4. Execute the TX of proposal
+        governor.execute(targets, values, calldatas, descriptionHash);
+
+        console.log("Box value: ", box.getNumber());
+        assert(box.getNumber() == valueToStore);
     }
 }
